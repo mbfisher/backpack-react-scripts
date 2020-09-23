@@ -15,7 +15,7 @@ process.env.NODE_ENV = 'development';
 // Makes the script crash on unhandled rejections instead of silently
 // ignoring them. In the future, promise rejections that are not handled will
 // terminate the Node.js process with a non-zero exit code.
-process.on('unhandledRejection', err => {
+process.on('unhandledRejection', (err) => {
   throw err;
 });
 
@@ -32,40 +32,54 @@ verifyTypeScriptSetup();
 // @remove-on-eject-end
 
 const fs = require('fs');
-const { createCompiler } = require('react-dev-utils/WebpackDevServerUtils');
 const webpack = require('webpack');
-
-const configFactory = require('../config/webpack.config.ssr');
+const {
+  createCompiler,
+  prepareUrls,
+} = require('react-dev-utils/WebpackDevServerUtils');
 const paths = require('../config/paths');
+const configFactory = require('../config/webpack.config.ssr');
 
 const statusFile = require('./utils/statusFile');
 
-const config = configFactory('development');
-const appName = require(paths.appPackageJson).name;
 const useYarn = fs.existsSync(paths.yarnLockFile);
+
+const port = parseInt(process.env.PORT, 10) || 3000;
+const HOST = process.env.HOST || '0.0.0.0';
+
+const config = configFactory('development');
+const protocol = process.env.HTTPS === 'true' ? 'https' : 'http';
+const appName = require(paths.appPackageJson).name;
 
 const useTypeScript = fs.existsSync(paths.appTsConfig);
 const tscCompileOnError = process.env.TSC_COMPILE_ON_ERROR === 'true';
+const urls = prepareUrls(
+  protocol,
+  HOST,
+  port,
+  paths.publicUrlOrPath.slice(0, -1)
+);
 
-const createCompilerOpts = {
+const createCompilerOpts = ;
+
+const compiler = createCompiler({
   appName,
   config,
   devSocket: undefined,
-  urls: undefined,
+  urls,
   useYarn,
   useTypeScript,
   tscCompileOnError,
   webpack,
-};
+});
 
-const compiler = createCompiler(createCompilerOpts);
 statusFile.init(compiler, paths.appBuildSsr);
 
 compiler.watch(
   {
     ignored: ['node_modules'],
   },
-  err => {
+  (err) => {
     if (err) {
       console.log(err.message || err);
       process.exit(1);

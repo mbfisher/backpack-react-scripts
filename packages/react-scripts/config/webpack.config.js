@@ -57,7 +57,6 @@ const appPackageJson = require(paths.appPackageJson);
 
 const HardSourceWebpackPlugin = require('hard-source-webpack-plugin');
 const LoadablePlugin = require('@loadable/webpack-plugin');
-
 const sassFunctions = require('bpk-mixins/sass-functions');
 const camelCase = require('lodash/camelCase');
 const bpkReactScriptsConfig = appPackageJson['backpack-react-scripts'] || {};
@@ -285,7 +284,8 @@ module.exports = function (webpackEnv) {
               .relative(paths.appSrc, info.absoluteResourcePath)
               .replace(/\\/g, '/')
         : isEnvDevelopment &&
-          (info => path.resolve(info.absoluteResourcePath).replace(/\\/g, '/')),
+          (info =>
+            path.resolve(info.absoluteResourcePath).replace(/\\/g, '/')),
       // Prevents conflicts when multiple webpack runtimes (from different apps)
       // are used on the same page.
       // jsonpFunction: `webpackJsonp${appPackageJson.name}`,
@@ -442,7 +442,7 @@ module.exports = function (webpackEnv) {
       ],
     },
     module: {
-      noParse: [/iconv-loader\.js$/, /colors\.js$/], // https://github.com/webpack/webpack/issues/3078#issuecomment-400697407
+      noParse: /iconv-loader\.js$/, // https://github.com/webpack/webpack/issues/3078#issuecomment-400697407
       strictExportPresence: true,
       rules: [
         // Disable require.ensure as it's not a standard language feature.
@@ -944,7 +944,7 @@ module.exports = function (webpackEnv) {
             return manifest;
           }, seed);
           const entrypointFiles = entrypoints.main.filter(
-            fileName => !fileName.endsWith('.map')
+            (fileName) => !fileName.endsWith('.map')
           );
 
           return {
