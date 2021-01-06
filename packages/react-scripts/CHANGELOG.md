@@ -1,5 +1,10 @@
 # `backpack-react-scripts` Change Log
 
+## 9.0.2
+
+- Rebased onto `upstream/master` v4.0.1 (de8b2b3f2d0a699284420c19d5b4db0be776e0cf)
+- Bumped `@svgr/webpack` to v5.5.0 
+
 ## 9.0.1
 
 - Fixed an issue where eslint was being shipped, which is not required due to our own linting package.
