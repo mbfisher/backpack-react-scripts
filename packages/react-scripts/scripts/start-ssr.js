@@ -39,19 +39,18 @@ const clearConsole = require('react-dev-utils/clearConsole');
 const checkRequiredFiles = require('react-dev-utils/checkRequiredFiles');
 const {
   choosePort,
-  createCompiler,
   prepareProxy,
   prepareUrls,
 } = require('react-dev-utils/WebpackDevServerUtils');
-const formatWebpackMessages = require('react-dev-utils/formatWebpackMessages');
 const openBrowser = require('react-dev-utils/openBrowser');
 const paths = require('../config/paths');
 const configFactory = require('../config/webpack.config');
 const createDevServerConfig = require('../config/webpackDevServer.config');
-/** ADDED **/
-const ssrConfigFactory = require('../config/webpack.config.ssr');
 
 const statusFile = require('./utils/statusFile');
+const tapCompiler = require('./utils/tapCompiler');
+const { fork } = require('child_process');
+const path = require('path');
 
 const useYarn = fs.existsSync(paths.yarnLockFile);
 const isInteractive = process.stdout.isTTY;
@@ -137,41 +136,7 @@ function updateStatus() {
   printBorder();
 }
 
-function tapCompiler(compiler, build, { readyMessage = '' } = {}) {
-  compiler.hooks.invalid.tap('invalid', () => {
-    setCompilerStatus(build, 'Compiling...');
-  });
 
-  compiler.hooks.done.tap('done', async stats => {
-    const statsData = stats.toJson({
-      all: false,
-      warnings: true,
-      errors: true,
-    });
-
-    const messages = formatWebpackMessages(statsData);
-    const isSuccessful = !messages.errors.length && !messages.warnings.length;
-    if (isSuccessful) {
-      setCompilerStatus(build, chalk.green(`Compiled successfully!`) + ` ${readyMessage}`);
-    }
-
-    // If errors exist, only show errors.
-    if (messages.errors.length) {
-      // Only keep the first error. Others are often indicative
-      // of the same problem, but confuse the reader with noise.
-      if (messages.errors.length > 1) {
-        messages.errors.length = 1;
-      }
-      setCompilerStatus(build, chalk.red('Failed to compile.\n') + messages.errors.join('\n\n'));
-      return;
-    }
-
-    // Show warnings if no errors were found.
-    if (messages.warnings.length) {
-      setCompilerStatus(build, chalk.yellow('Compiled with warnings.\n') + messages.warnings.join('\n\n'));
-    }
-  });
-}
 
 // We require that you explicitly set browsers and do not fall back to
 // browserslist defaults.
@@ -221,9 +186,13 @@ checkBrowsers(paths.appPath, isInteractive)
 
     const compiler = webpack(config);
 
-    tapCompiler(compiler, 'web', {
-      readyMessage: `Listening on ${urls.localUrlForTerminal}`
-    });
+    tapCompiler(
+      compiler,
+      message => setCompilerStatus('web', message),
+      {
+        readyMessage: `Listening on ${urls.localUrlForTerminal}`
+      }
+    );
     statusFile.init(compiler, paths.appBuildWeb);
 
     // Load proxy config
@@ -274,29 +243,16 @@ checkBrowsers(paths.appPath, isInteractive)
       openBrowser(urls.localUrlForBrowser);
     });
 
-    /** ADDED **/
-    const ssrCompiler = webpack(ssrConfigFactory('development'));
+    // Start a background process for the SSR build
+    const ssr = fork(path.join(__dirname, './utils/forkSsr'));
 
-    tapCompiler(ssrCompiler, 'ssr');
-    statusFile.init(ssrCompiler, paths.appBuildSsr);
-
-    ssrCompiler.watch(
-      {
-        ignored: ['node_modules'],
-      },
-      (err) => {
-        if (err) {
-          console.log(err.message || err);
-          process.exit(1);
-        }
-
-        statusFile.done(paths.appBuildSsr);
-      },
-    );
+    ssr.on('message', message => setCompilerStatus('ssr', message));
+    ssr.on('error', error => console.error(error));
 
     ['SIGINT', 'SIGTERM'].forEach(function(sig) {
       process.on(sig, function() {
         devServer.close();
+        ssr.kill();
         process.exit();
       });
     });
