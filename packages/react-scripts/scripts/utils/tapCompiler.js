@@ -1,6 +1,16 @@
 const chalk = require('chalk');
 const formatWebpackMessages = require('react-dev-utils/formatWebpackMessages');
 
+/**
+ * This function attaches event listeners to Webpack compiler and calls the
+ * onChange callback with a message.
+ *
+ * @param {webpack.Compiler} compiler
+ * @param {Function} onChange - Callback called with a message whenever the compiler updates
+ * @param {Object} options
+ * @param {string} [options.readyMessage] - Appended to the message whenever a build succeeds.
+ *                                          Useful for printing a "Listening on :3000" message.
+ */
 module.exports = function tapCompiler(compiler, onChange, { readyMessage = '' } = {}) {
   compiler.hooks.invalid.tap('invalid', () => {
     onChange('Compiling...');

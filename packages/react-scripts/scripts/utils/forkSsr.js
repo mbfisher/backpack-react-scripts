@@ -1,3 +1,8 @@
+/**
+ * This file is designed to be run by child_process.fork from the start-ssr
+ * script.
+ */
+
 const webpack = require('webpack');
 const ssrConfigFactory = require('../../config/webpack.config.ssr');
 const statusFile = require('./statusFile');

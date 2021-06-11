@@ -81,11 +81,14 @@ if (process.env.HOST) {
   console.log();
 }
 
+// We update this object on Webpack compiler updates, and then flush them to the
+// terminal. Don't update this directly - call setCompilerStatus.
 const compilerStatus = {
   web: 'Starting...',
   ssr: 'Starting...',
 };
 
+// Call this to update the terminal with the status of a compiler
 function setCompilerStatus(build, message) {
   compilerStatus[build] = message;
   updateStatus();
@@ -97,6 +100,8 @@ function printBorder() {
   console.log()
 }
 
+// This is a pretty crude terminal UI that just clears the console and
+// re-writes everything whenever it's called.
 function updateStatus() {
   if (isInteractive) {
     clearConsole();
@@ -136,7 +141,7 @@ function updateStatus() {
   printBorder();
 }
 
-
+/** BEGIN: web build **/
 
 // We require that you explicitly set browsers and do not fall back to
 // browserslist defaults.
@@ -171,19 +176,10 @@ checkBrowsers(paths.appPath, isInteractive)
         devServer.sockWrite(devServer.sockets, 'errors', errors),
     };
 
-    /** CHANGED **/
-      // Create a webpack compiler that is configured with custom messages.
-      // const compiler = createCompiler({
-      //   appName,
-      //   config,
-      //   devSocket,
-      //   urls,
-      //   useYarn,
-      //   useTypeScript,
-      //   tscCompileOnError,
-      //   webpack,
-      // });
-
+    // We can't use the createCompiler function from react-dev-utils, like the
+    // start script does, because it attaches listeners to the Webpack compiler
+    // that clear and write to the console. We need to manage output in one
+    // place, and it's setCompilerStatus()
     const compiler = webpack(config);
 
     tapCompiler(
@@ -243,11 +239,16 @@ checkBrowsers(paths.appPath, isInteractive)
       openBrowser(urls.localUrlForBrowser);
     });
 
-    // Start a background process for the SSR build
+    /** END: web build **/
+    /** BEGIN: ssr build **/
+
+    // We do this in a background process for performance - multicore, yo.
     const ssr = fork(path.join(__dirname, './utils/forkSsr'));
 
     ssr.on('message', message => setCompilerStatus('ssr', message));
     ssr.on('error', error => console.error(error));
+
+    /** END: ssr build **/
 
     ['SIGINT', 'SIGTERM'].forEach(function(sig) {
       process.on(sig, function() {
